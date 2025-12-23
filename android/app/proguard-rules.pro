@@ -95,12 +95,20 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# Remove logging in release (optional, for smaller APK)
+# Remove ALL logging in release for smaller APK and security
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
 }
+
+# Aggressive optimization
+-optimizationpasses 5
+-allowaccessmodification
+-repackageclasses ''
+-dontpreverify
 
 # React Native Config
 -keep class com.lugg.ReactNativeConfig.** { *; }

@@ -390,6 +390,7 @@ export const NotificationScreen: React.FC = () => {
           {
             backgroundColor: colors.background,
             paddingTop: insets.top,
+            paddingBottom: insets.bottom,
           },
         ]}
       >

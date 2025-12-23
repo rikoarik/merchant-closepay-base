@@ -22,33 +22,38 @@ export interface ScreenHeaderProps {
    * Title text untuk header
    */
   title: string;
-  
+
   /**
    * Custom back button handler
    * Jika tidak diisi, akan menggunakan navigation.goBack()
    */
   onBackPress?: () => void;
-  
+
   /**
    * Custom right component (optional)
    * Bisa digunakan untuk menambahkan action button di kanan
    */
   rightComponent?: React.ReactNode;
-  
+
   /**
    * Show border bottom (default: false)
    */
   showBorder?: boolean;
-  
+
   /**
    * Custom padding horizontal (default: dari getHorizontalPadding())
    */
   paddingHorizontal?: number;
-  
+
   /**
    * Custom padding vertical (default: moderateVerticalScale(14))
    */
   paddingVertical?: number;
+
+  /**
+   * Custom container style
+   */
+  style?: any;
 }
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -58,6 +63,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   showBorder = false,
   paddingHorizontal,
   paddingVertical,
+  style,
 }) => {
   const { colors } = useTheme();
   const navigation = useNavigation();
@@ -78,11 +84,12 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       style={[
         styles.header,
         {
-          paddingHorizontal: horizontalPadding,
-          paddingVertical: verticalPadding,
-           borderBottomColor: showBorder ? colors.border : 'transparent',
-           borderBottomWidth: showBorder ? StyleSheet.hairlineWidth : 0,
+          paddingRight: horizontalPadding,
+          borderBottomColor: showBorder ? colors.border : 'transparent',
+          borderBottomWidth: showBorder ? StyleSheet.hairlineWidth : 0,
         },
+
+        style,
       ]}
     >
       <TouchableOpacity
@@ -96,7 +103,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           variant="Linear"
         />
       </TouchableOpacity>
-      
+
       <Text
         style={[
           styles.title,
@@ -104,19 +111,21 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             color: colors.text,
           },
         ]}
-        
+
       >
         {title}
       </Text>
-      
-      {rightComponent ? (
-        <View style={styles.rightComponent}>
-          {rightComponent}
-        </View>
-      ) : (
-        null
-      )}
-    </View>
+
+      {
+        rightComponent ? (
+          <View style={styles.rightComponent}>
+            {rightComponent}
+          </View>
+        ) : (
+          null
+        )
+      }
+    </View >
   );
 };
 

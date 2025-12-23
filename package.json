@@ -24,6 +24,7 @@
     "build:apk:staging": "cd android && gradlew assembleStagingRelease",
     "build:apk:prod": "cd android && gradlew assembleProductionRelease",
     "build:apk:debug": "cd android && gradlew assembleDebug",
+    "build:aab": "cd android && gradlew bundleRelease && cd ..",
     "split:company": "node scripts/split-company-repo.js",
     "split:all": "node scripts/split-company-repo.js --all"
   },

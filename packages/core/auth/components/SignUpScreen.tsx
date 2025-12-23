@@ -34,6 +34,7 @@ import {
   ErrorModal,
   configService,
   DatePicker,
+  ScreenHeader,
 } from '@core/config';
 import { useTheme } from '@core/theme';
 import { useTranslation } from '@core/i18n';
@@ -919,29 +920,22 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
           <View style={[styles.content, { backgroundColor: 'transparent' }]}>
             {/* Header with Back Button - Separated */}
             <View style={[styles.topBarContainer]}>
-              <View style={[styles.header, { backgroundColor: colors.surface, paddingVertical: verticalScale(12), borderRadius: scale(12) }]}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => {
-                    if (onBackToLogin) {
-                      onBackToLogin();
-                    } else {
-                      // @ts-ignore - navigation type will be inferred
-                      navigation.goBack();
-                    }
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <ArrowLeft2
-                    size={getIconSize('medium')}
-                    color={colors.text}
-                    variant="Linear"
-                  />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
-                  {t('auth.signUp')}
-                </Text>
-                <View style={{ width: getIconSize('medium') }} />
-              </View>
+              <ScreenHeader
+                title={t('auth.signUp')}
+                onBackPress={() => {
+                  if (onBackToLogin) {
+                    onBackToLogin();
+                  } else {
+                    // @ts-ignore - navigation type will be inferred
+                    navigation.goBack();
+                  }
+                }}
+                style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: scale(12),
+                  paddingVertical: verticalScale(14), // Match standard vertical padding but can be customized if needed
+                }}
+              />
             </View>
 
             {/* Sign Up Form - At bottom */}

@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:fitsSystemWindows="false">
+    android:id="@+id/main"
+    android:background="#000000">
 
     <!-- Image View Container -->
     <FrameLayout
@@ -40,48 +40,32 @@
             <View
                 android:id="@+id/cropFrame"
                 android:layout_width="300dp"
-                android:layout_height="300dp"
-                android:background="@drawable/crop_frame_border_enhanced" />
+                android:layout_height="300dp" />
 
-            <!-- Corner Handles - L-shaped indicators -->
+            <!-- Corner Handles - Invisible touch targets (visuals drawn by CropOverlayView) -->
             <View
                 android:id="@+id/cornerHandleTopLeft"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="top|start"
-                android:background="@drawable/corner_handle_l"
-                android:layout_marginTop="-2dp"
-                android:layout_marginStart="-2dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|start" />
 
             <View
                 android:id="@+id/cornerHandleTopRight"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="top|end"
-                android:background="@drawable/corner_handle_l"
-                android:rotation="90"
-                android:layout_marginTop="-2dp"
-                android:layout_marginEnd="-2dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|end" />
 
             <View
                 android:id="@+id/cornerHandleBottomLeft"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="bottom|start"
-                android:background="@drawable/corner_handle_l"
-                android:rotation="270"
-                android:layout_marginBottom="-2dp"
-                android:layout_marginStart="-2dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="bottom|start" />
 
             <View
                 android:id="@+id/cornerHandleBottomRight"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="bottom|end"
-                android:background="@drawable/corner_handle_l"
-                android:rotation="180"
-                android:layout_marginBottom="-2dp"
-                android:layout_marginEnd="-2dp" />
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="bottom|end" />
 
         </FrameLayout>
 

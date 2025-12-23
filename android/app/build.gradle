@@ -88,6 +88,23 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // Optimize APK/AAB size
+    packagingOptions {
+        // Strip debug symbols from native libraries
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        // Exclude unnecessary files
+        resources {
+            excludes += ['META-INF/LICENSE.txt', 'META-INF/NOTICE.txt', 'META-INF/*.kotlin_module']
+        }
+    }
+
+    // Enable AAPT PNG crunching for smaller images
+    aaptOptions {
+        cruncherEnabled = true
+    }
+
     namespace "com.solusinegeri.app"
     defaultConfig {
         applicationId "com.solusinegeri.app"
@@ -162,8 +179,8 @@ android {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
-            // minifyEnabled enableProguardInReleaseBuilds
-            // shrinkResources enableProguardInReleaseBuilds
+            minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }

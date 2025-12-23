@@ -73,6 +73,12 @@ class CropActivity : Activity() {
     private var rotationAngle: Int = 0 // 0, 90, 180, 270
     private var isFlipped: Boolean = false
     
+    // Cached image bounds (relative to container)
+    private var imageBoundsLeft: Float = 0f
+    private var imageBoundsTop: Float = 0f
+    private var imageBoundsRight: Float = 0f
+    private var imageBoundsBottom: Float = 0f
+    
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,10 +91,37 @@ class CropActivity : Activity() {
             return
         }
         
-        // Load image
+        // Load image with sampling for very large images
         try {
-            val inputStream = contentResolver.openInputStream(imageUri!!)
-            originalBitmap = BitmapFactory.decodeStream(inputStream)
+            // First, get image dimensions without loading full bitmap
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            var inputStream = contentResolver.openInputStream(imageUri!!)
+            BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream?.close()
+            
+            // Calculate sample size for very large images (max 2048px on longest side)
+            val maxDimension = 2048
+            var sampleSize = 1
+            val imageWidth = options.outWidth
+            val imageHeight = options.outHeight
+            
+            if (imageWidth > maxDimension || imageHeight > maxDimension) {
+                val halfWidth = imageWidth / 2
+                val halfHeight = imageHeight / 2
+                
+                while ((halfWidth / sampleSize) >= maxDimension || (halfHeight / sampleSize) >= maxDimension) {
+                    sampleSize *= 2
+                }
+            }
+            
+            // Now load the actual bitmap with sample size
+            val loadOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            inputStream = contentResolver.openInputStream(imageUri!!)
+            originalBitmap = BitmapFactory.decodeStream(inputStream, null, loadOptions)
             inputStream?.close()
             
             if (originalBitmap == null) {
@@ -99,6 +132,10 @@ class CropActivity : Activity() {
             
             // Initialize display bitmap
             displayBitmap = originalBitmap
+        } catch (e: OutOfMemoryError) {
+            Toast.makeText(this, "Image too large to load", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         } catch (e: Exception) {
             Toast.makeText(this, "Error loading image: ${e.message}", Toast.LENGTH_SHORT).show()
             finish()
@@ -110,45 +147,10 @@ class CropActivity : Activity() {
     }
     
     private fun setupInsets() {
-        // Enable edge-to-edge
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        )
-        
-        // Make status bar transparent
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-        }
-        
-        // Make navigation bar transparent
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        }
-        
-        // Handle insets for toolbar (add top padding for status bar)
-        ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+        // Handle insets for toolbar only (add padding for status bar and nav bar)
+       ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val originalPaddingTop = (12 * resources.displayMetrics.density).toInt() // 12dp
-            val originalPaddingBottom = (12 * resources.displayMetrics.density).toInt() // 12dp
-            v.setPadding(
-                v.paddingLeft,
-                systemBars.top + originalPaddingTop,
-                v.paddingRight,
-                systemBars.bottom + originalPaddingBottom
-            )
-            insets
-        }
-        
-        // Handle insets for image container (add top padding for status bar)
-        ViewCompat.setOnApplyWindowInsetsListener(imageContainer) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(
-                v.paddingLeft,
-                systemBars.top,
-                v.paddingRight,
-                v.paddingBottom
-            )
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
     }
@@ -191,40 +193,40 @@ class CropActivity : Activity() {
         
         // Setup scale gesture detector for zoom
         scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                isZooming = true
+                return true
+            }
+            
             override fun onScale(detector: ScaleGestureDetector): Boolean {
-                if (!isZooming) {
-                    isZooming = true
-                    initialCropFrameSize = cropFrameSize
-                    initialCropFrameX = cropFrameX
-                    initialCropFrameY = cropFrameY
-                }
-                
                 val scaleFactor = detector.scaleFactor
-                val newSize = initialCropFrameSize * scaleFactor
                 
-                // Limit size between 100 and 95% of container
-                val minSize = 100f
-                val maxSize = minOf(imageContainer.width, imageContainer.height) * 0.95f
-                cropFrameSize = newSize.coerceIn(minSize, maxSize)
+                // Use image bounds for max size
+                val imageWidth = imageBoundsRight - imageBoundsLeft
+                val imageHeight = imageBoundsBottom - imageBoundsTop
                 
-                // Adjust position to keep center at gesture focus point
-                val containerLocation = IntArray(2)
-                imageContainer.getLocationOnScreen(containerLocation)
-                val focusX = detector.focusX - containerLocation[0]
-                val focusY = detector.focusY - containerLocation[1]
+                // Safety check for invalid bounds
+                if (imageWidth <= 0 || imageHeight <= 0) return true
                 
-                // Calculate how much size changed
-                val sizeDelta = cropFrameSize - initialCropFrameSize
+                val minCropSize = 100f * resources.displayMetrics.density
+                val minSize = minOf(imageWidth, imageHeight, minCropSize * 0.8f).coerceAtLeast(minCropSize * 0.3f)
+                val maxSize = minOf(imageWidth, imageHeight)
                 
-                // Adjust position to keep focus point fixed
-                cropFrameX = initialCropFrameX - sizeDelta / 2f
-                cropFrameY = initialCropFrameY - sizeDelta / 2f
+                // Calculate new size incrementally 
+                val oldSize = cropFrameSize
+                val newSize = (cropFrameSize * scaleFactor).coerceIn(minSize, maxSize)
+                val sizeDelta = newSize - oldSize
                 
-                // Keep within bounds
-                val maxX = imageContainer.width - cropFrameSize
-                val maxY = imageContainer.height - cropFrameSize
-                cropFrameX = cropFrameX.coerceIn(0f, maxX)
-                cropFrameY = cropFrameY.coerceIn(0f, maxY)
+                // Adjust position to keep center fixed
+                cropFrameX -= sizeDelta / 2f
+                cropFrameY -= sizeDelta / 2f
+                cropFrameSize = newSize
+                
+                // Keep within image bounds
+                val maxX = imageBoundsRight - cropFrameSize
+                val maxY = imageBoundsBottom - cropFrameSize
+                cropFrameX = cropFrameX.coerceIn(imageBoundsLeft, maxX)
+                cropFrameY = cropFrameY.coerceIn(imageBoundsTop, maxY)
                 
                 updateCropFramePosition()
                 return true
@@ -236,20 +238,137 @@ class CropActivity : Activity() {
         })
         
         // Setup touch listener for crop frame container (move and zoom)
-        cropFrameContainer.setOnTouchListener { _, event ->
+        cropOverlay.setOnTouchListener { _, event ->
+            // Pass to scale detector for pinch-to-zoom
             scaleGestureDetector.onTouchEvent(event)
-            if (!isZooming) {
-                handleCropFrameTouch(event, false)
-            } else {
-                true
+            
+            // Single-finger gestures when not zooming
+            if (event.pointerCount == 1 && !isZooming) {
+                handleSingleFingerTouch(event)
+            } else if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                resetTouchState()
             }
+            true
         }
         
-        // Setup touch listener for corner handles (resize)
-        setupCornerHandleTouch(cornerHandleTopLeft, 0) // Top Left
-        setupCornerHandleTouch(cornerHandleTopRight, 1) // Top Right
-        setupCornerHandleTouch(cornerHandleBottomLeft, 2) // Bottom Left
-        setupCornerHandleTouch(cornerHandleBottomRight, 3) // Bottom Right
+        // Disable XML corner handles (using hit-testing now)
+        cornerHandleTopLeft.setOnTouchListener { _, _ -> false }
+        cornerHandleTopRight.setOnTouchListener { _, _ -> false }
+        cornerHandleBottomLeft.setOnTouchListener { _, _ -> false }
+        cornerHandleBottomRight.setOnTouchListener { _, _ -> false }
+    }
+    
+    private fun resetTouchState() {
+        isDragging = false
+        isResizing = false
+        isZooming = false
+        resizeCorner = -1
+    }
+    
+    private fun constrainCropFrame() {
+        val imageWidth = imageBoundsRight - imageBoundsLeft
+        val imageHeight = imageBoundsBottom - imageBoundsTop
+        
+        // Ensure crop frame size doesn't exceed image dimensions
+        val maxPossibleSize = minOf(imageWidth, imageHeight)
+        if (cropFrameSize > maxPossibleSize && maxPossibleSize > 0) {
+            cropFrameSize = maxPossibleSize
+        }
+        
+        // Calculate bounds ensuring maxX >= imageBoundsLeft and maxY >= imageBoundsTop
+        val maxX = (imageBoundsRight - cropFrameSize).coerceAtLeast(imageBoundsLeft)
+        val maxY = (imageBoundsBottom - cropFrameSize).coerceAtLeast(imageBoundsTop)
+        cropFrameX = cropFrameX.coerceIn(imageBoundsLeft, maxX)
+        cropFrameY = cropFrameY.coerceIn(imageBoundsTop, maxY)
+    }
+    
+    private fun handleSingleFingerTouch(event: MotionEvent): Boolean {
+        val touchX = event.x
+        val touchY = event.y
+        val cornerSize = 50 * resources.displayMetrics.density // larger touch area
+        
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                // Check corners first (priority over drag)
+                resizeCorner = when {
+                    touchX >= cropFrameX - cornerSize / 2 && touchX <= cropFrameX + cornerSize &&
+                    touchY >= cropFrameY - cornerSize / 2 && touchY <= cropFrameY + cornerSize -> 0 // Top-left
+                    
+                    touchX >= cropFrameX + cropFrameSize - cornerSize && touchX <= cropFrameX + cropFrameSize + cornerSize / 2 &&
+                    touchY >= cropFrameY - cornerSize / 2 && touchY <= cropFrameY + cornerSize -> 1 // Top-right
+                    
+                    touchX >= cropFrameX - cornerSize / 2 && touchX <= cropFrameX + cornerSize &&
+                    touchY >= cropFrameY + cropFrameSize - cornerSize && touchY <= cropFrameY + cropFrameSize + cornerSize / 2 -> 2 // Bottom-left
+                    
+                    touchX >= cropFrameX + cropFrameSize - cornerSize && touchX <= cropFrameX + cropFrameSize + cornerSize / 2 &&
+                    touchY >= cropFrameY + cropFrameSize - cornerSize && touchY <= cropFrameY + cropFrameSize + cornerSize / 2 -> 3 // Bottom-right
+                    else -> -1
+                }
+                
+                if (resizeCorner >= 0) {
+                    isResizing = true
+                    isDragging = false
+                } else if (touchX >= cropFrameX && touchX <= cropFrameX + cropFrameSize &&
+                           touchY >= cropFrameY && touchY <= cropFrameY + cropFrameSize) {
+                    isDragging = true
+                    isResizing = false
+                }
+                
+                lastTouchX = touchX
+                lastTouchY = touchY
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val deltaX = touchX - lastTouchX
+                val deltaY = touchY - lastTouchY
+                
+                val imageWidth = imageBoundsRight - imageBoundsLeft
+                val imageHeight = imageBoundsBottom - imageBoundsTop
+                
+                // Use density-based minimum size for consistency
+                val minCropSize = 100f * resources.displayMetrics.density
+                val minSize = minOf(imageWidth, imageHeight, minCropSize * 0.8f).coerceAtLeast(minCropSize * 0.3f)
+                val maxSize = minOf(imageWidth, imageHeight)
+                
+                if (isResizing && resizeCorner >= 0) {
+                    val delta = when (resizeCorner) {
+                        0 -> (-deltaX - deltaY) / 2f
+                        1 -> (deltaX - deltaY) / 2f
+                        2 -> (-deltaX + deltaY) / 2f
+                        3 -> (deltaX + deltaY) / 2f
+                        else -> 0f
+                    }
+                    
+                    val oldSize = cropFrameSize
+                    val newSize = (cropFrameSize + delta).coerceIn(minSize, maxSize)
+                    val sizeDiff = newSize - oldSize
+                    
+                    when (resizeCorner) {
+                        0 -> { cropFrameX -= sizeDiff; cropFrameY -= sizeDiff }
+                        1 -> { cropFrameY -= sizeDiff }
+                        2 -> { cropFrameX -= sizeDiff }
+                        3 -> { }
+                    }
+                    cropFrameSize = newSize
+                    constrainCropFrame()
+                    updateCropFramePosition()
+                } else if (isDragging) {
+                    cropFrameX += deltaX
+                    cropFrameY += deltaY
+                    constrainCropFrame()
+                    updateCropFramePosition()
+                }
+                
+                lastTouchX = touchX
+                lastTouchY = touchY
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                resetTouchState()
+                return true
+            }
+        }
+        return false
     }
     
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -263,18 +382,57 @@ class CropActivity : Activity() {
         val availableWidth = imageContainer.width.toFloat()
         val availableHeight = imageContainer.height.toFloat()
         
-        // Initialize crop frame size (90% of smaller dimension, square)
-        cropFrameSize = (minOf(availableWidth, availableHeight) * 0.9f).coerceAtLeast(100f)
+        // Calculate image bounds using CENTER_INSIDE logic
+        calculateImageBounds()
         
-        // Center crop frame
-        cropFrameX = (availableWidth - cropFrameSize) / 2f
-        cropFrameY = (availableHeight - cropFrameSize) / 2f
+        val imageWidth = imageBoundsRight - imageBoundsLeft
+        val imageHeight = imageBoundsBottom - imageBoundsTop
+        
+        // Ensure valid image dimensions before proceeding
+        if (imageWidth <= 0 || imageHeight <= 0) {
+            Toast.makeText(this, "Invalid image dimensions", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+        
+        // Use density-based minimum size for better UX across devices
+        val minCropSize = 100f * resources.displayMetrics.density
+        
+        // Initialize crop frame size (full size 1:1, based on smaller image dimension)
+        cropFrameSize = minOf(imageWidth, imageHeight).coerceAtLeast(minCropSize)
+        
+        // Center crop frame within image bounds
+        cropFrameX = imageBoundsLeft + (imageWidth - cropFrameSize) / 2f
+        cropFrameY = imageBoundsTop + (imageHeight - cropFrameSize) / 2f
         
         // Image tetap di tengah, tidak perlu matrix transform
         imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
         
         updateCropFramePosition()
         updateCropOverlay()
+    }
+    
+    private fun calculateImageBounds() {
+        if (displayBitmap == null) return
+        
+        // Simple calculation - container has no padding now
+        val containerWidth = imageContainer.width.toFloat()
+        val containerHeight = imageContainer.height.toFloat()
+        val bitmapWidth = displayBitmap!!.width.toFloat()
+        val bitmapHeight = displayBitmap!!.height.toFloat()
+        
+        val scaleX = containerWidth / bitmapWidth
+        val scaleY = containerHeight / bitmapHeight
+        val scale = minOf(scaleX, scaleY)
+        
+        val displayedWidth = bitmapWidth * scale
+        val displayedHeight = bitmapHeight * scale
+        
+        // Image is centered in container (CENTER_INSIDE behavior)
+        imageBoundsLeft = (containerWidth - displayedWidth) / 2f
+        imageBoundsTop = (containerHeight - displayedHeight) / 2f
+        imageBoundsRight = imageBoundsLeft + displayedWidth
+        imageBoundsBottom = imageBoundsTop + displayedHeight
     }
     
     private fun setupCornerHandleTouch(handle: View, corner: Int) {
@@ -290,87 +448,78 @@ class CropActivity : Activity() {
         val containerX = event.rawX - containerLocation[0]
         val containerY = event.rawY - containerLocation[1]
         
+        // Use image bounds 
+        val imageWidth = imageBoundsRight - imageBoundsLeft
+        val imageHeight = imageBoundsBottom - imageBoundsTop
+        val minSize = 50f
+        val maxSize = minOf(imageWidth, imageHeight)
+        
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 if (isResize) {
                     isResizing = true
                     resizeCorner = corner
-                    initialCropFrameSize = cropFrameSize
-                    initialCropFrameX = cropFrameX
-                    initialCropFrameY = cropFrameY
-                    lastTouchX = containerX
-                    lastTouchY = containerY
                 } else {
                     isDragging = true
-                    lastTouchX = containerX
-                    lastTouchY = containerY
                 }
+                lastTouchX = containerX
+                lastTouchY = containerY
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
+                val deltaX = containerX - lastTouchX
+                val deltaY = containerY - lastTouchY
+                
                 if (isResizing && resizeCorner >= 0) {
-                    val deltaX = containerX - lastTouchX
-                    val deltaY = containerY - lastTouchY
-                    
-                    when (resizeCorner) {
-                        0 -> { // Top Left
-                            val newSize = initialCropFrameSize - deltaX - deltaY
-                            val minSize = 100f
-                            val maxSize = minOf(imageContainer.width, imageContainer.height) * 0.95f
-                            cropFrameSize = newSize.coerceIn(minSize, maxSize)
-                            cropFrameX = initialCropFrameX + (initialCropFrameSize - cropFrameSize)
-                            cropFrameY = initialCropFrameY + (initialCropFrameSize - cropFrameSize)
-                        }
-                        1 -> { // Top Right
-                            val newSize = initialCropFrameSize + deltaX - deltaY
-                            val minSize = 100f
-                            val maxSize = minOf(imageContainer.width, imageContainer.height) * 0.95f
-                            cropFrameSize = newSize.coerceIn(minSize, maxSize)
-                            cropFrameY = initialCropFrameY + (initialCropFrameSize - cropFrameSize)
-                        }
-                        2 -> { // Bottom Left
-                            val newSize = initialCropFrameSize - deltaX + deltaY
-                            val minSize = 100f
-                            val maxSize = minOf(imageContainer.width, imageContainer.height) * 0.95f
-                            cropFrameSize = newSize.coerceIn(minSize, maxSize)
-                            cropFrameX = initialCropFrameX + (initialCropFrameSize - cropFrameSize)
-                        }
-                        3 -> { // Bottom Right
-                            val newSize = initialCropFrameSize + deltaX + deltaY
-                            val minSize = 100f
-                            val maxSize = minOf(imageContainer.width, imageContainer.height) * 0.95f
-                            cropFrameSize = newSize.coerceIn(minSize, maxSize)
-                        }
+                    // Use average of deltaX and deltaY for uniform scaling
+                    val delta = when (resizeCorner) {
+                        0 -> (-deltaX - deltaY) / 2f  // Top Left - drag up-left to shrink
+                        1 -> (deltaX - deltaY) / 2f   // Top Right - drag up-right to shrink
+                        2 -> (-deltaX + deltaY) / 2f  // Bottom Left
+                        3 -> (deltaX + deltaY) / 2f   // Bottom Right - drag down-right to grow
+                        else -> 0f
                     }
                     
-                    // Keep within bounds
-                    val maxX = imageContainer.width - cropFrameSize
-                    val maxY = imageContainer.height - cropFrameSize
-                    cropFrameX = cropFrameX.coerceIn(0f, maxX)
-                    cropFrameY = cropFrameY.coerceIn(0f, maxY)
+                    val oldSize = cropFrameSize
+                    val newSize = (cropFrameSize + delta).coerceIn(minSize, maxSize)
+                    val sizeDiff = newSize - oldSize
+                    
+                    // Adjust position based on which corner is being dragged
+                    when (resizeCorner) {
+                        0 -> { // Top Left - anchor bottom-right
+                            cropFrameX -= sizeDiff
+                            cropFrameY -= sizeDiff
+                        }
+                        1 -> { // Top Right - anchor bottom-left
+                            cropFrameY -= sizeDiff
+                        }
+                        2 -> { // Bottom Left - anchor top-right
+                            cropFrameX -= sizeDiff
+                        }
+                        3 -> { // Bottom Right - anchor top-left
+                            // No position adjustment needed
+                        }
+                    }
+                    cropFrameSize = newSize
+                    
+                    // Keep within image bounds
+                    val maxX = imageBoundsRight - cropFrameSize
+                    val maxY = imageBoundsBottom - cropFrameSize
+                    cropFrameX = cropFrameX.coerceIn(imageBoundsLeft, maxX)
+                    cropFrameY = cropFrameY.coerceIn(imageBoundsTop, maxY)
                     
                     updateCropFramePosition()
-                    lastTouchX = containerX
-                    lastTouchY = containerY
-                    return true
                 } else if (isDragging) {
-                    val deltaX = containerX - lastTouchX
-                    val deltaY = containerY - lastTouchY
-                    
                     cropFrameX += deltaX
                     cropFrameY += deltaY
                     
-                    // Keep crop frame within bounds
-                    val maxX = imageContainer.width - cropFrameSize
-                    val maxY = imageContainer.height - cropFrameSize
-                    
-                    cropFrameX = cropFrameX.coerceIn(0f, maxX)
-                    cropFrameY = cropFrameY.coerceIn(0f, maxY)
+                    // Keep crop frame within image bounds
+                    val maxX = imageBoundsRight - cropFrameSize
+                    val maxY = imageBoundsBottom - cropFrameSize
+                    cropFrameX = cropFrameX.coerceIn(imageBoundsLeft, maxX)
+                    cropFrameY = cropFrameY.coerceIn(imageBoundsTop, maxY)
                     
                     updateCropFramePosition()
-                    lastTouchX = containerX
-                    lastTouchY = containerY
-                    return true
                 }
                 
                 lastTouchX = containerX
@@ -395,16 +544,21 @@ class CropActivity : Activity() {
     }
     
     private fun updateCropFramePosition() {
+        // Validate crop frame size (minimum 1 pixel)
+        val safeSize = cropFrameSize.coerceAtLeast(1f).toInt()
+        val safeX = cropFrameX.coerceAtLeast(0f).toInt()
+        val safeY = cropFrameY.coerceAtLeast(0f).toInt()
+        
         // Update crop frame container position
         val containerParams = cropFrameContainer.layoutParams as android.widget.FrameLayout.LayoutParams
-        containerParams.leftMargin = cropFrameX.toInt()
-        containerParams.topMargin = cropFrameY.toInt()
+        containerParams.leftMargin = safeX
+        containerParams.topMargin = safeY
         cropFrameContainer.layoutParams = containerParams
         
         // Update crop frame size
         val frameParams = cropFrame.layoutParams as android.widget.FrameLayout.LayoutParams
-        frameParams.width = cropFrameSize.toInt()
-        frameParams.height = cropFrameSize.toInt()
+        frameParams.width = safeSize
+        frameParams.height = safeSize
         cropFrame.layoutParams = frameParams
         
         // Update overlay
@@ -433,69 +587,68 @@ class CropActivity : Activity() {
     private fun applyTransformations() {
         if (originalBitmap == null) return
         
-        val matrix = Matrix()
-        val centerX = originalBitmap!!.width / 2f
-        val centerY = originalBitmap!!.height / 2f
-        
-        // Apply transformations in correct order: first rotate, then flip
-        // Move to center, apply transformations, move back
-        matrix.postTranslate(-centerX, -centerY)
-        
-        // Apply rotation first
-        if (rotationAngle != 0) {
-            matrix.postRotate(rotationAngle.toFloat())
+        try {
+            // Create matrix for transformation
+            val matrix = Matrix()
+            
+            // Apply rotation
+            if (rotationAngle != 0) {
+                matrix.postRotate(rotationAngle.toFloat())
+            }
+            
+            // Apply flip if needed
+            if (isFlipped) {
+                matrix.postScale(-1f, 1f)
+            }
+            
+            // Recycle old display bitmap if it's different from original
+            val oldDisplayBitmap = displayBitmap
+            
+            // Use Bitmap.createBitmap which handles the new dimensions and translation automatically
+            displayBitmap = Bitmap.createBitmap(
+                originalBitmap!!,
+                0, 0,
+                originalBitmap!!.width,
+                originalBitmap!!.height,
+                matrix,
+                true
+            )
+            
+            // Recycle old bitmap to free memory (only if different from original)
+            if (oldDisplayBitmap != null && oldDisplayBitmap != originalBitmap && oldDisplayBitmap != displayBitmap) {
+                oldDisplayBitmap.recycle()
+            }
+            
+            // Update image view
+            imageView.setImageBitmap(displayBitmap)
+            imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            
+            // Recalculate image bounds after rotation (dimensions may have changed)
+            calculateImageBounds()
+            
+            // Reinitialize crop frame within new image bounds
+            val imageWidth = imageBoundsRight - imageBoundsLeft
+            val imageHeight = imageBoundsBottom - imageBoundsTop
+            
+            // Ensure minimum crop frame size even for extreme aspect ratios
+            val minCropSize = 100f * resources.displayMetrics.density
+            cropFrameSize = minOf(imageWidth, imageHeight).coerceAtLeast(minCropSize)
+            
+            // Center crop frame within image bounds
+            cropFrameX = imageBoundsLeft + (imageWidth - cropFrameSize) / 2f
+            cropFrameY = imageBoundsTop + (imageHeight - cropFrameSize) / 2f
+            
+            updateCropFramePosition()
+        } catch (e: OutOfMemoryError) {
+            Toast.makeText(this, "Not enough memory to rotate image", Toast.LENGTH_SHORT).show()
+            // Reset rotation to avoid inconsistent state
+            rotationAngle = 0
+            isFlipped = false
+            displayBitmap = originalBitmap
+            imageView.setImageBitmap(displayBitmap)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error transforming image: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        
-        // Apply flip (horizontal flip)
-        if (isFlipped) {
-            matrix.postScale(-1f, 1f)
-        }
-        
-        // Move back
-        matrix.postTranslate(centerX, centerY)
-        
-        // Calculate new dimensions after rotation
-        val rect = RectF(0f, 0f, originalBitmap!!.width.toFloat(), originalBitmap!!.height.toFloat())
-        matrix.mapRect(rect)
-        
-        val newWidth = rect.width().toInt()
-        val newHeight = rect.height().toInt()
-        
-        // Create transformed bitmap
-        displayBitmap = Bitmap.createBitmap(
-            newWidth,
-            newHeight,
-            Bitmap.Config.ARGB_8888
-        )
-        
-        val canvas = android.graphics.Canvas(displayBitmap!!)
-        canvas.drawBitmap(originalBitmap!!, matrix, null)
-        
-        // Update image view
-        imageView.setImageBitmap(displayBitmap)
-        
-        // Reset image position and scale
-        val availableWidth = imageContainer.width.toFloat()
-        val availableHeight = imageContainer.height.toFloat()
-        
-        val imageWidth = displayBitmap!!.width.toFloat()
-        val imageHeight = displayBitmap!!.height.toFloat()
-        
-        val scaleX = availableWidth / imageWidth
-        val scaleY = availableHeight / imageHeight
-        currentScale = maxOf(scaleX, scaleY) * 1.2f
-        
-        currentTranslateX = (availableWidth - imageWidth * currentScale) / 2f
-        currentTranslateY = (availableHeight - imageHeight * currentScale) / 2f
-        
-        updateImageMatrix()
-        
-        // Recenter crop frame
-        cropFrameSize = (minOf(availableWidth, availableHeight) * 0.9f).coerceAtLeast(100f)
-        cropFrameX = (availableWidth - cropFrameSize) / 2f
-        cropFrameY = (availableHeight - cropFrameSize) / 2f
-        
-        updateCropFramePosition()
     }
     
     private fun cropAndSave() {
@@ -505,60 +658,44 @@ class CropActivity : Activity() {
                 return
             }
             
-            // Get dimensions
-            val containerWidth = imageContainer.width.toFloat()
-            val containerHeight = imageContainer.height.toFloat()
-            val imageViewWidth = imageView.width.toFloat()
-            val imageViewHeight = imageView.height.toFloat()
-            val imageBitmapWidth = displayBitmap!!.width.toFloat()
-            val imageBitmapHeight = displayBitmap!!.height.toFloat()
+            // Recalculate image bounds to ensure they're current
+            calculateImageBounds()
             
-            // Calculate scale to fit (CENTER_INSIDE)
-            val scaleX = imageViewWidth / imageBitmapWidth
-            val scaleY = imageViewHeight / imageBitmapHeight
-            val scale = minOf(scaleX, scaleY)
+            // Get bitmap dimensions
+            val bitmapWidth = displayBitmap!!.width.toFloat()
+            val bitmapHeight = displayBitmap!!.height.toFloat()
             
-            // Calculate displayed image size
-            val displayedWidth = imageBitmapWidth * scale
-            val displayedHeight = imageBitmapHeight * scale
+            // Use cached image bounds (same as what's used for constraining the crop frame)
+            val displayedWidth = imageBoundsRight - imageBoundsLeft
+            val displayedHeight = imageBoundsBottom - imageBoundsTop
             
-            // ImageView fills the container, so image is centered in container
-            // Calculate image position relative to container (centered)
-            val imageXInContainer = (containerWidth - displayedWidth) / 2f
-            val imageYInContainer = (containerHeight - displayedHeight) / 2f
+            // Calculate scale from bitmap to displayed size
+            val scale = displayedWidth / bitmapWidth
             
-            // Crop frame position is relative to container
-            val cropRectInContainer = RectF(
-                cropFrameX,
-                cropFrameY,
-                cropFrameX + cropFrameSize,
-                cropFrameY + cropFrameSize
-            )
+            // Crop frame is in container coordinates
+            // Convert to coordinates relative to displayed image
+            val cropLeftInImage = cropFrameX - imageBoundsLeft
+            val cropTopInImage = cropFrameY - imageBoundsTop
             
-            // Image bounds in container
-            val imageBoundsInContainer = RectF(
-                imageXInContainer,
-                imageYInContainer,
-                imageXInContainer + displayedWidth,
-                imageYInContainer + displayedHeight
-            )
+            // Clamp to displayed image bounds
+            val clampedLeft = cropLeftInImage.coerceIn(0f, displayedWidth)
+            val clampedTop = cropTopInImage.coerceIn(0f, displayedHeight)
+            val clampedWidth = cropFrameSize.coerceAtMost(displayedWidth - clampedLeft)
+            val clampedHeight = cropFrameSize.coerceAtMost(displayedHeight - clampedTop)
             
-            // Calculate intersection of crop frame with image
-            val intersection = RectF()
-            if (!intersection.setIntersect(cropRectInContainer, imageBoundsInContainer)) {
-                Toast.makeText(this, "Crop area is outside image bounds", Toast.LENGTH_SHORT).show()
-                return
-            }
+            // Convert from display coordinates to bitmap coordinates
+            val bitmapCropX = (clampedLeft / scale).toInt()
+            val bitmapCropY = (clampedTop / scale).toInt()
+            val bitmapCropWidth = (clampedWidth / scale).toInt()
+            val bitmapCropHeight = (clampedHeight / scale).toInt()
             
-            // Convert intersection from container coordinates to bitmap coordinates
-            // Subtract image position in container, then divide by scale
-            val cropX = ((intersection.left - imageBoundsInContainer.left) / scale).toInt().coerceAtLeast(0)
-            val cropY = ((intersection.top - imageBoundsInContainer.top) / scale).toInt().coerceAtLeast(0)
-            val cropWidth = (intersection.width() / scale).toInt().coerceAtMost(displayBitmap!!.width - cropX)
-            val cropHeight = (intersection.height() / scale).toInt().coerceAtMost(displayBitmap!!.height - cropY)
+            // Ensure valid crop bounds
+            val finalX = bitmapCropX.coerceIn(0, displayBitmap!!.width - 1)
+            val finalY = bitmapCropY.coerceIn(0, displayBitmap!!.height - 1)
+            val finalWidth = bitmapCropWidth.coerceIn(1, displayBitmap!!.width - finalX)
+            val finalHeight = bitmapCropHeight.coerceIn(1, displayBitmap!!.height - finalY)
             
-            // Ensure we have valid dimensions
-            if (cropWidth <= 0 || cropHeight <= 0) {
+            if (finalWidth <= 0 || finalHeight <= 0) {
                 Toast.makeText(this, "Invalid crop dimensions", Toast.LENGTH_SHORT).show()
                 return
             }
@@ -566,10 +703,10 @@ class CropActivity : Activity() {
             // Crop the bitmap
             val croppedBitmap = Bitmap.createBitmap(
                 displayBitmap!!,
-                cropX,
-                cropY,
-                cropWidth,
-                cropHeight
+                finalX,
+                finalY,
+                finalWidth,
+                finalHeight
             )
             
             // Save cropped image

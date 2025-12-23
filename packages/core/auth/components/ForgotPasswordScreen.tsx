@@ -27,6 +27,7 @@ import {
   FontFamily,
   ErrorModal,
   configService,
+  ScreenHeader,
 } from '@core/config';
 import { useTheme } from '@core/theme';
 import { useTranslation } from '@core/i18n';
@@ -80,10 +81,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       // Call API to send OTP to email
       await authService.sendForgotPasswordOtp(email);
-      
+
       setStep('otp');
       setSuccess(false);
     } catch (error: any) {
@@ -103,10 +104,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       // Call API to verify OTP
       await authService.verifyForgotPasswordOtp(email, otp);
-      
+
       setStep('reset');
       setOtpError('');
       setSuccess(false);
@@ -121,19 +122,19 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
 
   const handleResetPassword = async () => {
     const regexPass = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*~()-_+\-=[\]{};':"|,.<>/?]).{6,}$/;
-    
+
     if (!newPassword.trim()) {
       setError(t('auth.passwordRequired'));
       setShowErrorModal(true);
       return;
     }
-    
+
     if (!newPassword.match(regexPass)) {
       setError(t('auth.passwordMin'));
       setShowErrorModal(true);
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setError(t('auth.passwordMismatch'));
       setShowErrorModal(true);
@@ -143,10 +144,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       // Call API to reset password
       await authService.resetPassword(email, otp, newPassword);
-      
+
       setSuccess(true);
       // Navigate back to login after 2 seconds
       setTimeout(() => {
@@ -198,22 +199,15 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           <View style={[styles.content, { paddingHorizontal: getHorizontalPadding() }]}>
             {/* Header with Back Button */}
             <View style={styles.topBarContainer}>
-              <View style={[styles.header, { backgroundColor: colors.surface, paddingVertical: verticalScale(12), borderRadius: scale(12) }]}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <ArrowLeft2
-                    size={getIconSize('medium')}
-                    color={colors.text}
-                    variant="Linear"
-                  />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
-                  {t('auth.forgotPassword')}
-                </Text>
-                <View style={{ width: getIconSize('medium') }} />
-              </View>
+              <ScreenHeader
+                title={t('auth.forgotPassword')}
+                onBackPress={handleBack}
+                style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: scale(12),
+                  paddingVertical: verticalScale(14),
+                }}
+              />
             </View>
 
             {/* Form Container */}
@@ -476,13 +470,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    
+
     paddingBottom: verticalScale(32),
   },
   content: {
     paddingTop: verticalScale(20),
     paddingBottom: verticalScale(24),
-    
+
   },
   topBarContainer: {
     width: '100%',

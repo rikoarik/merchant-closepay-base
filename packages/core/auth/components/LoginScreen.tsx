@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
   eyeButton: {
     position: 'absolute',
     right: scale(2),
-    top: '30%',
+    top: '26%',
     transform: [{ translateY: -scale(12) }],
     padding: moderateVerticalScale(8),
     minWidth: getMinTouchTarget(),

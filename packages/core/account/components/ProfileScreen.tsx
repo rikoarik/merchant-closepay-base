@@ -145,9 +145,7 @@ export const ProfileScreen: React.FC = () => {
       ]}
     >
       {/* Header */}
-      {/* #region agent log */}
-      {(() => { fetch('http://127.0.0.1:7242/ingest/771e4897-52d2-4b3e-9954-c881bfdcca65',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProfileScreen.tsx:147',message:'Rendering ScreenHeader',data:{ScreenHeaderDefined:ScreenHeader!==undefined,ScreenHeaderType:typeof ScreenHeader},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{}); return null; })()}
-      {/* #endregion */}
+
       <ScreenHeader title={t('profile.title')} />
 
       {/* Menu List */}
