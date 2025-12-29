@@ -40,8 +40,8 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     
-    // Initialize Talsec Security (best-effort detection)
-    com.solusinegeri.app.security.TalsecManager.initialize(this)
+    // Note: Talsec security is initialized via freerasp-react-native 
+    // in React layer (SecurityProvider.tsx), not here in native code
     
     OkHttpClientProvider.setOkHttpClientFactory(CustomNetworkModule(this))
     loadReactNative(this)

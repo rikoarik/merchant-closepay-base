@@ -224,6 +224,6 @@ dependencies {
     // Google Tink for native crypto operations (AEAD encryption)
     implementation("com.google.crypto.tink:tink-android:1.12.0")
     
-    // Talsec Security - Runtime application protection
-    implementation("com.aheaditec.talsec.security:TalsecSecurity-Free:6.2.0")
+    // Note: Talsec security is handled by freerasp-react-native package
+    // which is auto-linked via React Native. No manual dependency needed here.
 }

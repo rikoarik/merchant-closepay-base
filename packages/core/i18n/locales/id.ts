@@ -295,6 +295,11 @@ export const id = {
     title: 'Terjadi Kesalahan',
     generic: 'Terjadi kesalahan. Silakan coba lagi.',
   },
+  security: {
+    alertTitle: 'Peringatan Keamanan',
+    closeApp: 'Tutup Aplikasi',
+    compromisedDevice: 'Aplikasi ini tidak dapat dijalankan pada perangkat yang tidak aman. Silakan gunakan perangkat yang aman.',
+  },
   onboarding: {
     notifications: {
       title: 'Pertama, akses untuk mengirimkan notifikasi',

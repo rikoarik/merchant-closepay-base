@@ -3,6 +3,7 @@ import { Alert, BackHandler, Platform } from 'react-native';
 import { useFreeRasp, SuspiciousAppInfo } from 'freerasp-react-native';
 import { securityConfig } from './SecurityConfig';
 import { axiosInstance } from '@core/config';
+import { SecurityAlertBottomSheet } from './SecurityAlertBottomSheet';
 
 interface SecurityContextType {
   isSecure: boolean;
@@ -98,42 +99,35 @@ const SecurityProviderInner: React.FC<{
     deviceBinding: () => {
       console.log('[TalsecSecurity] onDeviceBindingDetected: Device binding check failed');
       reportThreatToServer('DEVICE_BINDING_FAILED');
-      // Optional: You may choose not to block for this
+      onThreatDetected('Device Binding Failed', 'Device binding check failed.');
     },
 
     // Device ID anomaly
     deviceID: () => {
       console.log('[TalsecSecurity] onDeviceIdDetected: Device ID anomaly detected');
       reportThreatToServer('DEVICE_ID_ANOMALY');
-      // Optional: You may choose not to block for this
-    },
-
-    // Passcode/Lock screen not set (DeviceState)
-    passcode: () => {
-      console.log('[TalsecSecurity] onUnlockedDeviceDetected: Device has no lock screen set');
-      reportThreatToServer('NO_PASSCODE');
-      // Optional: Warn user but don't block
+      onThreatDetected('Device ID Anomaly', 'Device ID anomaly detected.');
     },
 
     // Hardware-backed keystore not available (DeviceState)
     secureHardwareNotAvailable: () => {
       console.log('[TalsecSecurity] onHardwareBackedKeystoreNotAvailableDetected: HW keystore not available');
       reportThreatToServer('NO_SECURE_HARDWARE');
-      // Optional: Warn user but don't block
+      onThreatDetected('No Secure Hardware', 'Hardware-backed keystore not available.');
     },
 
     // Obfuscation issues detection
     obfuscationIssues: () => {
       console.log('[TalsecSecurity] onObfuscationIssuesDetected: Code obfuscation may not be properly enabled');
       reportThreatToServer('OBFUSCATION_ISSUES');
-      // This is a warning - in production, ensure minifyEnabled = true
+      onThreatDetected('Obfuscation Issues', 'Code obfuscation may not be properly enabled.');
     },
 
     // Developer mode enabled (DeviceState)
     devMode: () => {
       console.log('[TalsecSecurity] onDeveloperModeDetected: Developer mode is enabled');
       reportThreatToServer('DEV_MODE_ENABLED');
-      // Optional: Warn user but don't block
+      onThreatDetected('Developer Mode', 'Developer mode is enabled. This is not allowed.');
     },
 
     // System VPN active (DeviceState)
@@ -169,20 +163,6 @@ const SecurityProviderInner: React.FC<{
       // Optional: Warn in production
     },
 
-    // Screenshot detection (requires Android 14+)
-    screenshot: () => {
-      console.log('[TalsecSecurity] onScreenshotDetected: A screenshot was taken');
-      reportThreatToServer('SCREENSHOT_DETECTED');
-      // Optional: Log or notify user
-    },
-
-    // Screen recording detection (requires Android 15+)
-    screenRecording: () => {
-      console.log('[TalsecSecurity] onScreenRecordingDetected: Screen recording is active');
-      reportThreatToServer('SCREEN_RECORDING_DETECTED');
-      onThreatDetected('Screen Recording', 'Screen recording has been detected. Please stop recording.');
-    },
-
     // Multiple app instances running
     multiInstance: () => {
       console.log('[TalsecSecurity] onMultiInstanceDetected: Multiple instances of the app are running');
@@ -201,35 +181,38 @@ const SecurityProviderInner: React.FC<{
 export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSecure, setIsSecure] = useState(true);
   const [securityStatus, setSecurityStatus] = useState('Secure');
+  const [showSecurityAlert, setShowSecurityAlert] = useState(false);
+  const [alertData, setAlertData] = useState({ threatType: '', message: '' });
 
   // Memoize alert handler to prevent recreating on every render
   const handleSecurityThreat = useCallback((threatType: string, message: string) => {
     // Prevent multiple alerts using functional update
     setIsSecure(prev => {
-      if (!prev) return prev; // Already insecure, don't show alert again
+      if (!prev) return prev; // Already insecure, don't exit again
 
-      Alert.alert(
-        threatType,
-        message,
-        [
-          {
-            text: 'Close App',
-            onPress: () => {
-              if (Platform.OS === 'android') {
-                BackHandler.exitApp();
-              }
-            },
-            style: 'destructive',
-          },
-        ],
-        { cancelable: false }
-      );
+      console.error(`[Security] Critical threat detected: ${threatType} - ${message}`);
+
+      // Immediately exit app without showing dialog
+      // This adds friction for attackers (though still bypassable)
+      if (Platform.OS === 'android') {
+        BackHandler.exitApp();
+      } else {
+        setShowSecurityAlert(true);
+        setAlertData({ threatType, message });
+      }
 
       return false; // Set to insecure
     });
 
     setSecurityStatus(threatType);
   }, []);
+
+  const handleCloseApp = useCallback(() => {
+    // iOS: Force app exit by throwing unhandled error
+    setTimeout(() => {
+      throw new Error(`[Security] ${alertData.threatType}: ${alertData.message}`);
+    }, 100);
+  }, [alertData]);
 
   // Memoize context value to prevent unnecessary re-renders of all consumers
   const contextValue = useMemo(() => ({
@@ -247,6 +230,16 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       <SecurityProviderInner onThreatDetected={handleSecurityThreat}>
         {children}
       </SecurityProviderInner>
+
+      {/* iOS Security Alert Bottom Sheet */}
+      {Platform.OS === 'ios' && (
+        <SecurityAlertBottomSheet
+          visible={showSecurityAlert}
+          threatType={alertData.threatType}
+          message={alertData.message}
+          onCloseApp={handleCloseApp}
+        />
+      )}
     </SecurityContext.Provider>
   );
 };

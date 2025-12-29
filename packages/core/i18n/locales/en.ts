@@ -295,6 +295,11 @@ export const en = {
     title: 'An Error Occurred',
     generic: 'An error occurred. Please try again.',
   },
+  security: {
+    alertTitle: 'Security Alert',
+    closeApp: 'Close App',
+    compromisedDevice: 'This app cannot run on compromised devices. Please use a secure device.',
+  },
   onboarding: {
     notifications: {
       title: 'First, allow access to send notifications',

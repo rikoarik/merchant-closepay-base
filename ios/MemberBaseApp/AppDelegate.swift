@@ -14,8 +14,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    // Initialize Talsec Security (best-effort detection)
-    TalsecManager.initialize()
+    // Note: Talsec security is initialized via freerasp-react-native
+    // in React layer (SecurityProvider.tsx), not here in native code
     
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
