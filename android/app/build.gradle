@@ -176,6 +176,13 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            
+            // Secure Configuration - Debug/Staging
+            buildConfigField "String", "API_BASE_URL_PROD", "\"https://api.solusiuntuknegeri.com\""
+            buildConfigField "String", "API_BASE_URL_STG", "\"https://api.stg.solusiuntuknegeri.com\""
+            buildConfigField "String", "CERT_PIN_1", "\"sha256/cCZ/uMd/qFD4cMVMg8y5w99JpiGeT/sSTiPeB1mu/Ec=\""
+            buildConfigField "String", "CERT_PIN_2", "\"sha256/9Fk6HgfMnM7/vtnBHcUhg1b3gU2bIpSd50XmKZkMbGA=\""
+            buildConfigField "String", "SECURITY_EMAIL", "\"security@solusiuntuknegeri.com\""
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -184,6 +191,13 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            
+            // Secure Configuration - Production
+            buildConfigField "String", "API_BASE_URL_PROD", "\"https://api.solusiuntuknegeri.com\""
+            buildConfigField "String", "API_BASE_URL_STG", "\"https://api.stg.solusiuntuknegeri.com\""
+            buildConfigField "String", "CERT_PIN_1", "\"sha256/cCZ/uMd/qFD4cMVMg8y5w99JpiGeT/sSTiPeB1mu/Ec=\""
+            buildConfigField "String", "CERT_PIN_2", "\"sha256/9Fk6HgfMnM7/vtnBHcUhg1b3gU2bIpSd50XmKZkMbGA=\""
+            buildConfigField "String", "SECURITY_EMAIL", "\"security@solusiuntuknegeri.com\""
         }
     }
 }
@@ -209,4 +223,7 @@ dependencies {
     
     // Google Tink for native crypto operations (AEAD encryption)
     implementation("com.google.crypto.tink:tink-android:1.12.0")
+    
+    // Talsec Security - Runtime application protection
+    implementation("com.aheaditec.talsec.security:TalsecSecurity-Free:6.2.0")
 }

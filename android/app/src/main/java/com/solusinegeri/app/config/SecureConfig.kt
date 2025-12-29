@@ -1,126 +1,60 @@
 package com.solusinegeri.app.config
 
 import com.solusinegeri.app.BuildConfig
-import com.solusinegeri.app.security.NativeSecurityModule
 
 /**
  * Secure Configuration Storage
  * 
- * Runtime secret retrieval with native layer priority.
- * Falls back to Kotlin if native library unavailable.
+ * Provides centralized access to sensitive configuration values
+ * stored in BuildConfig (compile-time constants).
+ * 
+ * BuildConfig values are:
+ * - Set at build time via gradle
+ * - Obfuscated by ProGuard/R8 in release builds
+ * - Different per build variant (debug/release)
  */
 object SecureConfig {
     
-    // Fallback data (used only if native lib fails to load)
-    private object FallbackData {
-        fun getApiProd() = "api.solusiuntuknegeri.com"
-        fun getApiStg() = "api.stg.solusiuntuknegeri.com"
-        fun getPin1() = "sha256/cCZ/uMd/qFD4cMVMg8y5w99JpiGeT/sSTiPeB1mu/Ec="
-        fun getPin2() = "sha256/9Fk6HgfMnM7/vtnBHcUhg1b3gU2bIpSd50XmKZkMbGA="
-    }
-    
     /**
-     * Get the production API hostname
+     * Get the production API base URL
      */
-    fun getApiHostname(): String {
-        return try {
-            if (NativeSecurityModule.isAvailable()) {
-                NativeSecurityModule.getApiHostname("production")
-            } else {
-                FallbackData.getApiProd()
-            }
-        } catch (e: Exception) {
-            FallbackData.getApiProd()
-        }
-    }
+    fun getApiProd(): String = BuildConfig.API_BASE_URL_PROD
     
     /**
-     * Get the staging API hostname
+     * Get the staging API base URL
      */
-    fun getApiStgHostname(): String {
-        return try {
-            if (NativeSecurityModule.isAvailable()) {
-                NativeSecurityModule.getApiHostname("staging")
-            } else {
-                FallbackData.getApiStg()
-            }
-        } catch (e: Exception) {
-            FallbackData.getApiStg()
-        }
-    }
+    fun getApiStg(): String = BuildConfig.API_BASE_URL_STG
     
     /**
-     * Get the leaf certificate pin
+     * Get the first certificate pin (leaf certificate)
      */
-    fun getPinLeafCert(): String {
-        return try {
-            if (NativeSecurityModule.isAvailable()) {
-                NativeSecurityModule.getCertificatePins()[0]
-            } else {
-                FallbackData.getPin1()
-            }
-        } catch (e: Exception) {
-            FallbackData.getPin1()
-        }
-    }
+    fun getPin1(): String = BuildConfig.CERT_PIN_1
     
     /**
-     * Get the intermediate certificate pin
+     * Get the second certificate pin (intermediate certificate)
      */
-    fun getPinIntermediate(): String {
-        return try {
-            if (NativeSecurityModule.isAvailable()) {
-                NativeSecurityModule.getCertificatePins()[1]
-            } else {
-                FallbackData.getPin2()
-            }
-        } catch (e: Exception) {
-            FallbackData.getPin2()
-        }
-    }
+    fun getPin2(): String = BuildConfig.CERT_PIN_2
     
     /**
-     * Get the full API base URL (production)
+     * Get all certificate pins
      */
-    fun getApiBaseUrl(): String {
-        return "https://" + getApiHostname()
-    }
+    fun getAllPins(): List<String> = listOf(getPin1(), getPin2())
     
     /**
-     * Get the full API base URL (staging)
+     * Get security/watcher email for threat reports
      */
-    fun getApiStgBaseUrl(): String {
-        return "https://" + getApiStgHostname()
-    }
+    fun getSecurityEmail(): String = BuildConfig.SECURITY_EMAIL
     
     /**
-     * Get current environment based on build variant
-     */
-    fun getEnv(): String {
-        return if (BuildConfig.DEBUG) {
-            "staging"
-        } else {
-            try {
-                val flavor = BuildConfig::class.java.getField("FLAVOR").get(null) as? String
-                if (flavor?.contains("staging", ignoreCase = true) == true) {
-                    "staging"
-                } else {
-                    "production"
-                }
-            } catch (e: Exception) {
-                "production"
-            }
-        }
-    }
-    
-    /**
-     * Get current API base URL based on environment
+     * Get current API base URL based on build variant
+     * - Debug builds use staging
+     * - Release builds use production
      */
     fun getCurrentApiBaseUrl(): String {
-        return if (getEnv() == "staging") {
-            getApiStgBaseUrl()
+        return if (BuildConfig.DEBUG) {
+            getApiStg()
         } else {
-            getApiBaseUrl()
+            getApiProd()
         }
     }
 }
