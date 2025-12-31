@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+build/
+dist/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# React Native
+android/
+ios/
+*.pbxproj
+*.xcworkspace
+*.xcuserdata
+
+# Generated files
+*.generated.*
+coverage/
+.nyc_output/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Config files that shouldn't be formatted
+*.min.js
+*.min.css
+

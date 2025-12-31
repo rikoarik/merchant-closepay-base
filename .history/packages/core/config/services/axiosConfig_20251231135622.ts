@@ -12,7 +12,6 @@ import {
   AuthErrorClass,
   NetworkErrorClass,
 } from '../types/errors';
-import { API_CONSTANTS, TIME_CONSTANTS, ERROR_MESSAGES } from '../constants';
 
 // Base URL dari environment variable atau default ke staging
 // Production build harus set API_BASE_URL di .env.production

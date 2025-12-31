@@ -66,7 +66,7 @@ export interface BrandingConfig {
   logo: string;
   appName: string;
   splashImage?: string;
-  // Note: primaryColor sekarang di-handle oleh Theme Service, tidak lagi di config
+  primaryColor?: string; // Accent color - Theme Service akan auto-generate primaryLight & primaryDark
 }
 
 export interface LoginConfig {

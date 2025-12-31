@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { Alert, BackHandler, Platform } from 'react-native';
 import { useFreeRasp, SuspiciousAppInfo } from 'freerasp-react-native';
-import { securityConfig } from './SecurityConfig';
+import { securityConfig, shouldInitializeFreeRasp } from './SecurityConfig';
 import { axiosInstance } from '@core/config';
 import { SecurityAlertBottomSheet } from './SecurityAlertBottomSheet';
 
@@ -42,11 +42,11 @@ const reportThreatToServer = async (
 };
 
 // Inner component that uses useFreeRasp hook
+// This component is only rendered when FreeRASP should be initialized
 const SecurityProviderInner: React.FC<{
   children: React.ReactNode;
   onThreatDetected: (threatType: string, message: string) => void;
 }> = ({ children, onThreatDetected }) => {
-
   // Define threat handlers based on freerasp-react-native v4.x API
   // All callbacks are optional - implement the ones you need
   // Critical threats are reported to server for security monitoring
@@ -178,6 +178,18 @@ const SecurityProviderInner: React.FC<{
   return <>{children}</>;
 };
 
+// Wrapper component that conditionally renders SecurityProviderInner
+const SecurityProviderWithFreeRasp: React.FC<{
+  children: React.ReactNode;
+  onThreatDetected: (threatType: string, message: string) => void;
+}> = ({ children, onThreatDetected }) => {
+  if (shouldInitializeFreeRasp) {
+    return <SecurityProviderInner onThreatDetected={onThreatDetected}>{children}</SecurityProviderInner>;
+  }
+  // If FreeRASP shouldn't be initialized, just render children without security checks
+  return <>{children}</>;
+};
+
 export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSecure, setIsSecure] = useState(true);
   const [securityStatus, setSecurityStatus] = useState('Secure');
@@ -227,9 +239,9 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <SecurityContext.Provider value={contextValue}>
-      <SecurityProviderInner onThreatDetected={handleSecurityThreat}>
+      <SecurityProviderWithFreeRasp onThreatDetected={handleSecurityThreat}>
         {children}
-      </SecurityProviderInner>
+      </SecurityProviderWithFreeRasp>
 
       {/* iOS Security Alert Bottom Sheet */}
       {Platform.OS === 'ios' && (

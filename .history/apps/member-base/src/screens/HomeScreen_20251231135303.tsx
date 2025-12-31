@@ -208,7 +208,7 @@ export const HomeScreen = () => {
       return tabs.findIndex((tab) => tab.id === tabId);
     },
     [tabs]
-  );  
+  );
 
   // Helper untuk menentukan tab mana yang harus dirender (lazy loading)
   // Hanya render tab aktif, tab sebelumnya, dan tab berikutnya untuk performa
