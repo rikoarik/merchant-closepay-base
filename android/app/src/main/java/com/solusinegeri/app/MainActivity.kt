@@ -10,7 +10,7 @@ import com.solusinegeri.app.imagepicker.ImagePickerModule
 class MainActivity : ReactActivity() {
 
     override fun getMainComponentName(): String {
-        return "MemberBaseApp"
+        return "MerchantBaseApp"
     }
 
     override fun createReactActivityDelegate(): ReactActivityDelegate {

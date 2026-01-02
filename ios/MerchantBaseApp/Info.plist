@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Merchant Base App</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lokasi membantu kami mencocokkan wilayah operasional toko dan meningkatkan keamanan akun merchant</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dibutuhkan untuk scan QR pembayaran dan unggah dokumen verifikasi supaya proses cepat dan tanpa ribet</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Dengan notifikasi aktif, kamu nggak akan ketinggalan pesanan baru, laporan harian, atau program promo spesial merchant</string>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>MonaSans-Regular.ttf</string>
+		<string>MonaSans-Medium.ttf</string>
+		<string>MonaSans-MediumItalic.ttf</string>
+		<string>MonaSans-SemiBold.ttf</string>
+		<string>MonaSans-SemiBoldItalic.ttf</string>
+		<string>MonaSans-Bold.ttf</string>
+		<string>MonaSans-BoldItalic.ttf</string>
+		<string>MonaSans-Italic.ttf</string>
+	</array>
+</dict>
+</plist>

@@ -15,15 +15,15 @@ Sistem otomatis untuk mengganti logo app (Android & iOS) berdasarkan company saa
 **Auto-Detection:**
 ```javascript
 // Script akan baca App.tsx dan cari pattern:
-import MemberbaseApp from './apps/member-base';
+import MerchantbaseApp from './apps/merchant-base';
 
-// Otomatis pakai "member-base" sebagai company ID
+// Otomatis pakai "merchant-base" sebagai company ID
 // Jadi ganti company di App.tsx = otomatis ganti logo!
 ```
 
 2. **Asset Structure**: 
    ```
-   apps/member-base/assets/
+   apps/merchant-base/assets/
    ├── android/
    │   ├── mipmap-mdpi/
    │   ├── mipmap-hdpi/
@@ -71,7 +71,7 @@ convert logo.png -resize 192x192 mipmap-xxxhdpi/ic_launcher.png
 ### 3. Taruh di Folder Company
 
 ```
-apps/member-base/assets/
+apps/merchant-base/assets/
 ├── android/
 │   ├── mipmap-mdpi/
 │   │   ├── ic_launcher.png (48x48)
@@ -125,7 +125,7 @@ Misal mau bikin company baru `closepay-merchant`:
 
 3. **Copy template Contents.json:**
    ```bash
-   cp apps/member-base/assets/ios/AppIcon.appiconset/Contents.json \
+   cp apps/merchant-base/assets/ios/AppIcon.appiconset/Contents.json \
       apps/closepay-merchant/assets/ios/AppIcon.appiconset/
    ```
 

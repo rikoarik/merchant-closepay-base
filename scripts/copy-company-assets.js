@@ -50,7 +50,7 @@ function logInfo(message) {
 const ROOT_DIR = path.resolve(__dirname, '..');
 const APPS_DIR = path.join(ROOT_DIR, 'apps');
 const ANDROID_RES_DIR = path.join(ROOT_DIR, 'android', 'app', 'src', 'main', 'res');
-const IOS_ASSETS_DIR = path.join(ROOT_DIR, 'ios', 'MemberBaseApp', 'Images.xcassets', 'AppIcon.appiconset');
+const IOS_ASSETS_DIR = path.join(ROOT_DIR, 'ios', 'MerchantBaseApp', 'Images.xcassets', 'AppIcon.appiconset');
 
 /**
  * Copy a file from source to destination

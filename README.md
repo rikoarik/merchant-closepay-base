@@ -1,6 +1,6 @@
-# Closepay V2 - Member Base App
+# Closepay V2 - Merchant Base App
 
-React Native application untuk Closepay Member Base dengan multi-tenant support, plugin system, dan custom UI components.
+React Native application untuk Closepay Merchant Base dengan multi-tenant support, plugin system, dan custom UI components.
 
 ## Features
 
@@ -73,9 +73,9 @@ npm run ios
 ## Project Structure
 
 ```
-member-base-app/
+merchant-base-app/
 ├── apps/
-│   └── member-base/              # Main application
+│   └── merchant-base/              # Main application
 │       ├── config/
 │       │   ├── app.config.ts     # App configuration
 │       │   └── app.config.template.ts

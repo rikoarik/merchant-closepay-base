@@ -1,5 +1,5 @@
 {
-  "name": "member-closepay-v2",
+  "name": "merchant-closepay-v2",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/blur": "^4.4.1",
     "@react-native-masked-view/masked-view": "^0.3.2",
     "@react-native/new-app-screen": "0.82.1",
     "@react-navigation/bottom-tabs": "^7.8.8",
